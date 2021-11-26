@@ -1,7 +1,18 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+
+#ifdef _WIN32
 #include <direct.h>
+#else
+#include <sys/stat.h>
+#include <sys/types.h>
+#endif
+
+#ifndef _WIN32
+#include <stdlib.h>
+#endif
+
 #include <json/json.h>
 #include "psb.hpp"
 #include "compress.h"
@@ -62,7 +73,7 @@ traversal_offsets_tree(psb_t& psb,
 
 				Json::Value node(Json::intValue);
 				psb_number_t *number = (psb_number_t*)value;
-				node = number->get_integer();
+				node = (Json::Value::Int64)(number->get_integer());
 				root.append(node);
 			}
 
@@ -87,7 +98,7 @@ traversal_offsets_tree(psb_t& psb,
 
 				Json::Value node(Json::intValue);
 				psb_number_t *number = (psb_number_t*)value;
-				node = number->get_integer();
+				node = (Json::Value::Int64)(number->get_integer());
 				root.append(node);
 			}
 
@@ -100,7 +111,11 @@ traversal_offsets_tree(psb_t& psb,
 				psb_resource_t *resource = (psb_resource_t *)value;
 				Json::Value node(Json::stringValue);
 				char temp[32];
+				#ifdef _WIN32
 				_itoa_s(resource->get_index(), temp, 10);
+				#else
+				sprintf(temp, "%u", resource->get_index());
+				#endif
 				node = "#resource#" + (string)temp;
 				root.append(node);
 			}
@@ -163,7 +178,7 @@ traversal_object_tree(psb_t& psb,
 
 				Json::Value node(Json::intValue);
 				psb_number_t *number = (psb_number_t*)value;
-				node = number->get_integer();
+				node = (Json::Value::Int64)(number->get_integer());
 				root[entry_name] = node;
 			}
 
@@ -186,7 +201,7 @@ traversal_object_tree(psb_t& psb,
 
 				Json::Value node(Json::intValue);
 				psb_number_t *number = (psb_number_t*)value;
-				node = number->get_integer();
+				node = (Json::Value::Int64)(number->get_integer());
 				root[entry_name] = node;
 			}
 
@@ -202,7 +217,11 @@ traversal_object_tree(psb_t& psb,
 
 				Json::Value node(Json::stringValue);
 				char temp[32];
+				#ifdef _WIN32
 				_itoa_s(resource->get_index(), temp, 10);
+				#else
+				sprintf(temp, "%u", resource->get_index());
+				#endif
 				node = "#resource#" + (string)temp;
 				root[entry_name] = node;
 			}
@@ -218,7 +237,12 @@ void export_res(psb_t &psb, string source_name)
 {
 	Json::Value res(Json::arrayValue);
 
+	#ifdef _WIN32
 	_mkdir("res");
+	#else
+	mkdir("res",S_IRWXU);
+	#endif
+
 	for (uint32_t i = 0; i < psb.chunk_offsets->size(); i++)
 	{
 		char filename[256];
@@ -226,7 +250,11 @@ void export_res(psb_t &psb, string source_name)
 		uint32_t offset = psb.chunk_offsets->get(i);
 		uint32_t length = psb.chunk_lengths->get(i);
 
+		#ifdef _WIN32
 		sprintf_s(filename, "res/%d.bin", i);
+		#else
+		sprintf(filename, "res/%d.bin");
+		#endif
 
 		fstream output(filename, ios::trunc | ios::binary | ios::out);
 		if (output.is_open())
